@@ -1,0 +1,28 @@
+name: Self Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  plan:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/release-plan.yml
+    with:
+      version-scheme: semver
+
+  publish:
+    needs: plan
+    if: needs.plan.outputs.released == 'true'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/release-publish.yml
+    with:
+      tag: ${{ needs.plan.outputs.tag }}
+      sha: ${{ needs.plan.outputs.sha }}
+      pr-number: ${{ needs.plan.outputs.pr-number }}

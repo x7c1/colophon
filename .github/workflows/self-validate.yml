@@ -1,0 +1,13 @@
+name: Self Validate Release PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/validate-release-pr.yml
+    with:
+      version-scheme: semver

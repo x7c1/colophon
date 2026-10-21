@@ -8,7 +8,7 @@ Reusable GitHub Actions workflows that open release PRs, check their version, an
 - **Version in the title** — bumps the patch by default; edit the PR title to release a minor or major instead
 - **Title check** — a required check rejects titles that skip a version or break the format
 - **Tagged releases** — tags the commit that passed CI and publishes the release notes written in the PR
-- **Pluggable version files** — writes the version into `Cargo.toml`, `package.json`, a GNOME Shell extension's `metadata.json`, or a custom file
+- **Pluggable version files** — writes the version into a GNOME Shell extension's `metadata.json`, or into any file through a command of your own
 - **Semver or integer versions** — `v1.2.3` or `v8`, chosen per repository
 
 ## Status
@@ -17,7 +17,7 @@ Under development toward v0.1. Interfaces may change without notice until v1.0.
 
 ## Documentation
 
-Usage will be documented under `docs/` as the workflows land.
+- [Usage](docs/usage.md) — calling the workflows, version schemes and writers, repository settings, and tokens
 
 ## License
 

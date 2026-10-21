@@ -1,0 +1,6 @@
+# actionlint 1.7.12 predates the job.workflow_* contexts GitHub documents for
+# reusable workflows; the scripts checkout depends on them.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'property "workflow_(repository|sha)" is not defined in object type'

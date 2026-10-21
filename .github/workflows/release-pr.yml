@@ -1,0 +1,83 @@
+name: Release PR
+
+# Opens or refreshes the one rolling release PR. Call it from a workflow
+# triggered by `push` (to the default branch), `pull_request` (`edited`, so a
+# promoted title takes effect), and `workflow_dispatch`; the job itself
+# decides which of those events to act on. See docs/usage.md.
+
+on:
+  workflow_call:
+    inputs:
+      version-scheme:
+        description: "semver (vX.Y.Z) or integer (vN)"
+        type: string
+        required: true
+      version-writer:
+        description: "none, gnome-extension, or command"
+        type: string
+        default: none
+      version-file:
+        description: "The file the gnome-extension writer updates, relative to the repository root"
+        type: string
+        default: ""
+      version-command:
+        description: "The shell command the command writer runs, with the version in COLOPHON_VERSION"
+        type: string
+        default: ""
+    secrets:
+      token:
+        description: "A token that may push branches and open PRs. Defaults to GITHUB_TOKEN, whose PRs do not trigger other workflows."
+        required: false
+
+jobs:
+  release-pr:
+    # - push: skip the squash of a release PR ("Release v..."), or the job
+    #   would open a release PR for the release that just landed.
+    # - pull_request: act only on title edits of an open release PR, so
+    #   body edits and the job's own edits do not recurse.
+    # - workflow_dispatch: only from the default branch.
+    if: >-
+      (github.event_name == 'push' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+        !startsWith(github.event.head_commit.message, 'Release v')) ||
+      (github.event_name == 'pull_request' &&
+        github.event.action == 'edited' &&
+        github.event.pull_request.state == 'open' &&
+        contains(github.event.pull_request.labels.*.name, 'release') &&
+        github.event.changes.title.from != null) ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: colophon-release-pr
+      cancel-in-progress: false
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repo
+          fetch-depth: 0
+          token: ${{ secrets.token || github.token }}
+
+      # The scripts come from the colophon commit the caller pinned.
+      - name: Check out colophon
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: colophon
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
+
+      - name: Open or refresh the release PR
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+          COLOPHON_SCHEME: ${{ inputs.version-scheme }}
+          COLOPHON_WRITER: ${{ inputs.version-writer }}
+          COLOPHON_VERSION_FILE: ${{ inputs.version-file }}
+          COLOPHON_VERSION_COMMAND: ${{ inputs.version-command }}
+        run: ../colophon/scripts/create-release-pr.sh
