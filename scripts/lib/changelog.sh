@@ -9,7 +9,7 @@
 # reachable from HEAD are summarized. format_changelog is pure, so
 # tests/changelog.test.sh exercises it without a repository.
 
-CHANGELOG_TYPES="feat fix perf refactor style docs chore other"
+CHANGELOG_TYPES="feat fix perf refactor style docs test build ci chore other"
 
 generate_changelog() {
   local last_tag="$1" repo_url="$2"
@@ -32,6 +32,9 @@ changelog_section_title() {
     refactor) echo "Refactoring" ;;
     style) echo "Style" ;;
     docs) echo "Documentation" ;;
+    test) echo "Tests" ;;
+    build) echo "Build" ;;
+    ci) echo "CI" ;;
     chore) echo "Chores" ;;
     *) echo "Other Changes" ;;
   esac
@@ -45,7 +48,7 @@ changelog_type_of() {
     type="${BASH_REMATCH[1]}"
   fi
   case "$type" in
-    feat | fix | perf | refactor | style | docs | chore) echo "$type" ;;
+    feat | fix | perf | refactor | style | docs | test | build | ci | chore) echo "$type" ;;
     *) echo "other" ;;
   esac
 }
