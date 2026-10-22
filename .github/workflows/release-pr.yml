@@ -24,9 +24,16 @@ on:
         description: "The shell command the command writer runs, with the version in COLOPHON_VERSION"
         type: string
         default: ""
+      app-client-id:
+        description: "The Client ID of a GitHub App that opens the release PR, with app-private-key. Its PRs trigger CI, unlike GITHUB_TOKEN's"
+        type: string
+        default: ""
     secrets:
+      app-private-key:
+        description: "The private key of the GitHub App named by app-client-id"
+        required: false
       token:
-        description: "A token that may push branches and open PRs. Defaults to GITHUB_TOKEN, whose PRs do not trigger other workflows."
+        description: "A token that may push branches and open PRs, used when no app-client-id is given. Defaults to GITHUB_TOKEN, whose PRs do not trigger other workflows"
         required: false
 
 jobs:
@@ -56,12 +63,26 @@ jobs:
       group: colophon-release-pr
       cancel-in-progress: false
     steps:
+      # A token for this repository only, valid for an hour, with no more than
+      # the job needs.
+      - name: Create a GitHub App token
+        id: app-token
+        if: inputs.app-client-id != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repo
           fetch-depth: 0
-          token: ${{ secrets.token || github.token }}
+          token: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
 
       # The scripts come from the colophon commit the caller pinned.
       - name: Check out colophon
@@ -75,7 +96,7 @@ jobs:
       - name: Open or refresh the release PR
         working-directory: repo
         env:
-          GH_TOKEN: ${{ secrets.token || github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           COLOPHON_SCHEME: ${{ inputs.version-scheme }}
           COLOPHON_WRITER: ${{ inputs.version-writer }}
           COLOPHON_VERSION_FILE: ${{ inputs.version-file }}
