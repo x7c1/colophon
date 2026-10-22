@@ -152,13 +152,35 @@ jobs:
 
 By default the release PR is opened with `GITHUB_TOKEN`. GitHub does not start
 other workflows for events caused by that token, so CI and the validate check
-do not run on the release PR by themselves: close and reopen the PR (or edit
-its title or body) before merging to run them. To have them run on every
-refresh, pass a token from a GitHub App or a personal access token with
-contents and pull-requests write access:
+do not run on the release PR by themselves: close and reopen the PR before
+merging to run them.
+
+To have them run on every refresh, open the release PR as a GitHub App. The
+workflow turns the App's private key into a token for the calling repository
+only, valid for an hour, so there is no long-lived token to rotate.
+
+1. Create a GitHub App on the account that owns the repositories (Settings ›
+   Developer settings › GitHub Apps › New GitHub App):
+   - Webhook: inactive
+   - Repository permissions: Contents — Read and write, Pull requests — Read
+     and write (Metadata — Read-only is added automatically)
+   - Where can this GitHub App be installed: Only on this account
+2. Note the App's Client ID and generate a private key.
+3. Install the App on the repositories that release with colophon (Only
+   select repositories).
+4. In each repository, add the Client ID as the Actions variable
+   `RELEASE_APP_CLIENT_ID` and the private key as the Actions secret
+   `RELEASE_APP_PRIVATE_KEY`.
+5. Pass them to the release PR workflow:
 
 ```yaml
     uses: x7c1/colophon/.github/workflows/release-pr.yml@<sha>
+    with:
+      version-scheme: semver
+      app-client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
     secrets:
-      token: ${{ secrets.RELEASE_TOKEN }}
+      app-private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 ```
+
+A personal access token with contents and pull-requests write access works
+too, passed as the `token` secret, but it has to be replaced when it expires.

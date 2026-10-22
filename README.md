@@ -10,6 +10,7 @@ Reusable GitHub Actions workflows that open release PRs, check their version, an
 - **Tagged releases** — tags the commit that passed CI and publishes the release notes written in the PR
 - **Pluggable version files** — writes the version into a GNOME Shell extension's `metadata.json`, or into any file through a command of your own
 - **Semver or integer versions** — `v1.2.3` or `v8`, chosen per repository
+- **GitHub App tokens** — opens the release PR as your GitHub App so CI runs on it, with a short-lived token scoped to the repository
 
 ## Status
 
