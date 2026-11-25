@@ -14,7 +14,7 @@ permissions:
 jobs:
   test:
     # A draft release PR is not judged until someone marks it ready for review.
-    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'release')) }}
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -26,7 +26,7 @@ jobs:
 
   lint:
     # A draft release PR is not judged until someone marks it ready for review.
-    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'release')) }}
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:

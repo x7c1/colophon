@@ -9,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${TESTS_DIR}/assert.sh"
 
 WORKFLOWS="${TESTS_DIR}/../.github/workflows"
-SKIP_DRAFT_RELEASE="if: \${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'release')) }}"
+SKIP_DRAFT_RELEASE="if: \${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}"
 
 # The body of one job in a workflow: its lines up to the next job.
 job() {

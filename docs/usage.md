@@ -13,9 +13,10 @@ workflows of its own and pins them by commit SHA.
 ## How a release goes
 
 1. Every push to the default branch opens or refreshes one PR titled
-   `Release v<next>`, labelled `release`. Its branch is the default branch plus
-   one commit that writes the version into your files. The PR opens as a
-   draft: an open release PR does not mean anyone has decided to release it.
+   `Release v<next>`, labelled `release`, on a branch named `release/...`. The
+   branch is the default branch plus one commit that writes the version into
+   your files. The PR opens as a draft: an open release PR does not mean
+   anyone has decided to release it.
    While it is a draft, the validate check passes without judging it, and CI
    can skip it too (see [Calling the workflows](#calling-the-workflows)).
 2. The next version is the patch after the last tag. To release a minor or
@@ -151,9 +152,10 @@ jobs:
 Colophon cannot keep your own CI off the draft release PR, so skip it in your
 CI workflow: add `ready_for_review` to its `pull_request` types, so that
 marking the PR ready runs everything on it, and give each job a condition that
-skips a draft PR labelled `release`. Other draft PRs still run CI. An
-aggregate job that accepts `skipped` (such as an `all-green` job required by a
-ruleset) keeps passing on the draft.
+skips a draft PR whose branch starts with `release/`. The branch name is in the
+event from the start, unlike the `release` label, which is added after the PR
+opens. Other draft PRs still run CI. An aggregate job that accepts `skipped`
+(such as an `all-green` job required by a ruleset) keeps passing on the draft.
 
 ```yaml
 # .github/workflows/ci.yml
@@ -166,7 +168,7 @@ on:
 jobs:
   test:
     # A draft release PR is not judged until someone marks it ready for review.
-    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'release')) }}
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@<sha>

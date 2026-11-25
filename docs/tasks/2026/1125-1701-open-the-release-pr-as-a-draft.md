@@ -40,7 +40,9 @@ Make the draft state carry that decision:
     check). An unedited summary on a draft is not an error.
   - Callers skip their own CI jobs on a draft release PR. colophon cannot do
     this for them, so `docs/usage.md` shows how: a job condition that skips
-    when the PR is a draft and carries the `release` label, and
+    when the PR is a draft and its branch starts with `release/` (the branch
+    name is in the event from the start; the `release` label is added after
+    the PR opens), and
     `ready_for_review` added to the `pull_request` types of both the validate
     workflow and CI, so that marking the PR ready runs everything on it. Other
     draft PRs are not affected. An aggregate job (such as `all-green`) that
@@ -69,7 +71,7 @@ Update `docs/usage.md` and `README.md` wherever they describe the flow:
 - [x] `tests/create-release-pr.test.sh`: when no release PR is open, the script calls `gh pr create` with `--draft`
 - [x] `tests/create-release-pr.test.sh`: when an open release PR is ready for review, the script converts it to a draft with `gh pr ready <number> --undo` before it pushes the branch; when the open release PR is already a draft, it does not call `gh pr ready`
 - [x] `tests/validate-release-pr.test.sh` or a workflow-level test: the validate workflow skips the title and summary check on a draft release PR and still runs it on a release PR that is ready for review
-- [x] `self-validate.yml` and `ci.yml` list `ready_for_review` in their `pull_request` types, and the jobs of `ci.yml` other than `all-green` skip on a draft PR labelled `release`
+- [x] `self-validate.yml` and `ci.yml` list `ready_for_review` in their `pull_request` types, and the jobs of `ci.yml` other than `all-green` skip on a draft PR whose branch starts with `release/`
 - [x] shellcheck and actionlint pass
 
 ### Before merge (verified outside the check command)
