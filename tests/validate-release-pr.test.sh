@@ -24,4 +24,13 @@ output=$("$VALIDATE" semver "Release v9.0.0" "$UNWRITTEN" v7 2>&1)
 assert_contains "reports the title" "$output" "Disallowed version transition"
 assert_contains "reports the summary too" "$output" "no release summary"
 
+# --- the workflow's gate ------------------------------------------------------
+
+GATE="${TESTS_DIR}/../scripts/release-pr-gate.sh"
+assert_eq "checks a ready release PR" "skip=false" "$("$GATE" "Release v8.0.0" false 2>/dev/null)"
+assert_eq "skips a draft release PR" "skip=true" "$("$GATE" "Release v8.0.0" true 2>/dev/null)"
+assert_eq "skips a PR that is not a release PR" "skip=true" "$("$GATE" "fix: x" false 2>/dev/null)"
+assert_eq "skips a draft that is not a release PR" "skip=true" "$("$GATE" "fix: x" true 2>/dev/null)"
+assert_status "gate usage" 2 "$GATE" "Release v8.0.0"
+
 finish
