@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
+    # Other branches run CI through their PRs, where a draft release PR skips it.
     branches:
-      - "**"
+      - main
   pull_request:
     # ready_for_review runs the jobs skipped while the release PR was a draft.
     types: [opened, synchronize, reopened, ready_for_review]
