@@ -24,6 +24,8 @@ assert_contains "self-validate runs on ready_for_review" \
   "$(cat "${WORKFLOWS}/self-validate.yml")" "ready_for_review"
 assert_contains "ci runs on ready_for_review" \
   "$(cat "${WORKFLOWS}/ci.yml")" "ready_for_review"
+assert_not_contains "ci runs on pushes to main only, not to a release branch" \
+  "$(cat "${WORKFLOWS}/ci.yml")" '"**"'
 assert_contains "ci test skips a draft release PR" "$(job ci.yml test)" "$SKIP_DRAFT_RELEASE"
 assert_contains "ci lint skips a draft release PR" "$(job ci.yml lint)" "$SKIP_DRAFT_RELEASE"
 assert_not_contains "ci all-green still runs on a draft release PR" \
