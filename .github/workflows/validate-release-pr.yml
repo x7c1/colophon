@@ -1,8 +1,10 @@
 name: Validate Release PR
 
 # Holds a release PR to its title and summary rules. Call it from a workflow
-# triggered by `pull_request` (opened, edited, synchronize, reopened) and make
-# its job a required check. PRs that are not release PRs pass. See
+# triggered by `pull_request` (opened, edited, synchronize, reopened,
+# ready_for_review) and make its job a required check. PRs that are not
+# release PRs pass, and so does a release PR while it is a draft: marking it
+# ready for review is the decision to release, and runs the check. See
 # docs/usage.md.
 
 on:
@@ -20,17 +22,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Skip when not a release PR
+      - name: Check out colophon
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: colophon
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
+
+      - name: Skip when not a release PR or still a draft
         id: gate
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          if [[ "$PR_TITLE" == "Release v"* ]]; then
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not a release PR; nothing to check."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+        run: colophon/scripts/release-pr-gate.sh "$PR_TITLE" "$PR_DRAFT" >> "$GITHUB_OUTPUT"
 
       - name: Check out the repository
         if: steps.gate.outputs.skip == 'false'
@@ -38,15 +43,6 @@ jobs:
         with:
           path: repo
           fetch-depth: 0
-          persist-credentials: false
-
-      - name: Check out colophon
-        if: steps.gate.outputs.skip == 'false'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: colophon
-          repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
           persist-credentials: false
 
       - name: Validate the title and summary

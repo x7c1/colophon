@@ -6,15 +6,19 @@ workflows of its own and pins them by commit SHA.
 | Workflow | Called on | Does |
 |---|---|---|
 | `release-pr.yml` | `push`, `pull_request` (`edited`), `workflow_dispatch` | Opens or refreshes the release PR |
-| `validate-release-pr.yml` | `pull_request` | Checks the release PR's title and summary |
+| `validate-release-pr.yml` | `pull_request` | Checks the release PR's title and summary once it is ready for review |
 | `release-plan.yml` | `workflow_run` of CI | Decides whether the commit CI judged is a release |
 | `release-publish.yml` | after `release-plan.yml` | Tags the commit and publishes the GitHub Release |
 
 ## How a release goes
 
 1. Every push to the default branch opens or refreshes one PR titled
-   `Release v<next>`, labelled `release`. Its branch is the default branch plus
-   one commit that writes the version into your files.
+   `Release v<next>`, labelled `release`, on a branch named `release/...`. The
+   branch is the default branch plus one commit that writes the version into
+   your files. The PR opens as a draft: an open release PR does not mean
+   anyone has decided to release it.
+   While it is a draft, the validate check passes without judging it, and CI
+   can skip it too (see [Calling the workflows](#calling-the-workflows)).
 2. The next version is the patch after the last tag. To release a minor or
    major instead, edit the PR title (`Release v0.3.4` → `Release v0.4.0`); the
    next refresh keeps it.
@@ -23,7 +27,12 @@ workflows of its own and pins them by commit SHA.
    `<!-- release-summary:todo -->` comment. The summary becomes the GitHub
    Release body; the changelog below the marker is regenerated on every
    refresh.
-4. Squash-merge the PR. When CI passes on the merge commit, the commit is
+4. When you decide to release, mark the PR ready for review. That runs CI and
+   the validate check on it. Any refresh (a push to the default branch, a
+   title edit, or a manual run) turns the PR back into a draft, because the
+   content you decided on has changed: review the new content and mark it
+   ready again.
+5. Squash-merge the PR. When CI passes on the merge commit, the commit is
    tagged `v<version>` and the GitHub Release is published.
 
 ## Version schemes
@@ -79,7 +88,7 @@ jobs:
 name: Validate Release PR
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
 jobs:
   validate:
     permissions:
@@ -140,24 +149,54 @@ jobs:
 `release-plan.yml` outputs `released`, `version`, `tag`, `sha`, and
 `pr-number`.
 
+Colophon cannot keep your own CI off the draft release PR, so skip it in your
+CI workflow: add `ready_for_review` to its `pull_request` types, so that
+marking the PR ready runs everything on it, and give each job a condition that
+skips a draft PR whose branch starts with `release/`. The branch name is in the
+event from the start, unlike the `release` label, which is added after the PR
+opens. Other draft PRs still run CI. An aggregate job that accepts `skipped`
+(such as an `all-green` job required by a ruleset) keeps passing on the draft.
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+jobs:
+  test:
+    # A draft release PR is not judged until someone marks it ready for review.
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<sha>
+      - run: make test   # your checks
+```
+
 ## Repository settings
 
 - Allow squash merge; the default commit title (the PR title) is how the
   release PR workflow recognizes a release landing and skips it
+- Draft PRs need a public repository, or a private one on a GitHub plan that
+  supports them; the release PR always opens as a draft
 - Under Settings › Actions › General, allow GitHub Actions to create pull
   requests when the release PR is opened with `GITHUB_TOKEN`
-- Make the `validate` job of the validate workflow a required check
+- Make the `validate` job of the validate workflow a required check, and
+  trigger it and CI on `ready_for_review` as in the examples above
 
 ## Tokens
 
 By default the release PR is opened with `GITHUB_TOKEN`. GitHub does not start
 other workflows for events caused by that token, so CI and the validate check
-do not run on the release PR by themselves: close and reopen the PR before
-merging to run them.
+do not run on the refreshes of the release PR. They run when a person marks
+the PR ready for review: that event is caused by the person, not the token, so
+the decision to release is also what starts the checks.
 
-To have them run on every refresh, open the release PR as a GitHub App. The
-workflow turns the App's private key into a token for the calling repository
-only, valid for an hour, so there is no long-lived token to rotate.
+To have workflows start on every refresh too, open the release PR as a GitHub
+App. The workflow turns the App's private key into a token for the calling
+repository only, valid for an hour, so there is no long-lived token to rotate.
 
 1. Create a GitHub App on the account that owns the repositories (Settings ›
    Developer settings › GitHub Apps › New GitHub App):

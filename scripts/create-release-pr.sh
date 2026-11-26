@@ -13,6 +13,11 @@ set -euo pipefail
 # head branch from main and writes the version on top, so the PR always
 # reflects main.
 #
+# The release PR stays a draft until a person decides to release by marking
+# it ready for review. Every run leaves it a draft: a new PR opens as one, and
+# an open PR that is ready for review is turned back into one, because the
+# decision was made on content this run replaces.
+#
 # Environment variables:
 #   GH_TOKEN        - GitHub token (required).
 #   COLOPHON_SCHEME - semver | integer (required).
@@ -74,15 +79,42 @@ main() {
   body=$(render_pr_body "$branch" "$version" "$last_tag" "$changelog" "$repo_url" "$summary")
 
   if [ -n "$pr_number" ]; then
+    # Before the push, so the push's `synchronize` event already sees a draft.
+    ensure_draft "$pr_number"
     git push origin "$branch" --force
     gh pr edit "$pr_number" --body "$body"
   else
     ensure_release_label
     # A failed earlier run may have left the branch behind.
     git push origin "$branch" --force
-    gh pr create --title "$(release_title "$version")" --label "$RELEASE_LABEL" \
+    gh pr create --draft --title "$(release_title "$version")" --label "$RELEASE_LABEL" \
       --head "$branch" --body "$body"
   fi
+}
+
+# Turn the PR back into a draft unless it already is one.
+ensure_draft() {
+  local pr_number="$1"
+  local is_draft
+
+  # A failed read must not pass for "already a draft": the refresh would
+  # then leave a stale decision to release on the new content.
+  if ! is_draft=$(gh pr view "$pr_number" --json isDraft --jq '.isDraft'); then
+    echo "::error::Could not read whether release PR #${pr_number} is a draft." >&2
+    return 1
+  fi
+
+  case "$is_draft" in
+    true) ;;
+    false)
+      echo "Turning release PR #${pr_number} back into a draft"
+      gh pr ready "$pr_number" --undo
+      ;;
+    *)
+      echo "::error::Unexpected draft state '${is_draft}' for release PR #${pr_number}." >&2
+      return 1
+      ;;
+  esac
 }
 
 # The summary region of the PR's current body, or a fresh placeholder.

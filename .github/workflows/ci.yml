@@ -5,12 +5,16 @@ on:
     branches:
       - "**"
   pull_request:
+    # ready_for_review runs the jobs skipped while the release PR was a draft.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
 
 jobs:
   test:
+    # A draft release PR is not judged until someone marks it ready for review.
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -21,6 +25,8 @@ jobs:
         run: bash tests/run.sh
 
   lint:
+    # A draft release PR is not judged until someone marks it ready for review.
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft && startsWith(github.head_ref, 'release/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
